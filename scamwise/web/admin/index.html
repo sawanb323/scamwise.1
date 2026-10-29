@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SCAMWISE Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2314b8a6'/%3E%3Cpath d='M12 4 6 6.5v4.2c0 3.7 2.6 7.1 6 8 3.4-.9 6-4.3 6-8V6.5Z' fill='white'/%3E%3C/svg%3E">
+<style>
+  .shell { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 64px); }
+  .side { background: var(--navy-2); padding: 18px 12px; }
+  .side button { display: flex; width: 100%; gap: 10px; align-items: center; background: none; border: 0; color: #cbd5e1; padding: 10px 12px; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 600; text-align: left; }
+  .side button.on, .side button:hover { background: rgba(20,184,166,.18); color: #fff; }
+  .main { padding: 24px; min-width: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .kpi .v { font-family: "Space Grotesk", sans-serif; font-size: 1.9rem; font-weight: 700; }
+  .kpi .l { color: var(--muted); font-size: .85rem; }
+  .bars .row { display: grid; grid-template-columns: 110px 1fr 50px; gap: 10px; align-items: center; margin: 8px 0; font-size: .9rem; }
+  .auth { max-width: 420px; margin: 60px auto; }
+  .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .topbar h2 { margin: 0; font-size: 1.5rem; }
+  .drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(520px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: -10px 0 40px rgba(0,0,0,.2); padding: 22px; overflow: auto; z-index: 50; }
+  button.small { padding: 6px 10px; font-size: .82rem; border-radius: 8px; }
+  @media (max-width: 860px) { .shell { grid-template-columns: 1fr; } .side { display: flex; overflow-x: auto; gap: 4px; padding: 8px; } .side button { white-space: nowrap; width: auto; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<nav class="nav"><div class="wrap" style="max-width:none">
+  <a class="brand" href="../"><span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2 4 5.5v5.7c0 5 3.4 9.7 8 10.8 4.6-1.1 8-5.8 8-10.8V5.5Z"/></svg></span>SCAMWISE <span style="font-weight:600;letter-spacing:0;color:#5eead4;margin-left:6px">Admin</span></a>
+  <div style="margin-left:auto;display:flex;gap:12px;align-items:center;color:#cbd5e1;font-size:.88rem">
+    <span id="who"></span>
+    <button class="btn btn-ghost small hidden" id="logout">Sign out</button>
+  </div>
+</div></nav>
+
+<!-- ======================= sign in ======================= -->
+<div id="view-login" class="auth wrap hidden">
+  <div class="card">
+    <h2 style="font-size:1.5rem">Administrator sign-in</h2>
+    <p class="note">For SCAMWISE security staff only. App users sign in to the <a href="../app/">web app</a> with their own account. A normal user account never grants admin access.</p>
+    <form id="login-form">
+      <input name="email" type="email" placeholder="Email" required autocomplete="username" style="margin-top:10px">
+      <input name="password" type="password" placeholder="Password" required autocomplete="current-password" style="margin-top:10px">
+      <button class="btn btn-dark" style="margin-top:14px;width:100%" type="submit">Continue</button>
+      <p class="note" id="login-error" style="color:var(--high)"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= MFA ======================= -->
+<div id="view-mfa" class="auth wrap hidden">
+  <div class="card">
+    <h2 style="font-size:1.5rem" id="mfa-title">Two-step verification</h2>
+    <div id="mfa-enroll" class="hidden">
+      <p class="note">Admin access requires an authenticator app (Google Authenticator, Microsoft Authenticator, Authy…). Scan this QR code once, then enter the 6-digit code it shows.</p>
+      <div style="background:#fff;padding:10px;border-radius:12px;display:inline-block"><img id="mfa-qr" alt="Authenticator QR code" width="180" height="180"></div>
+      <p class="note">Can't scan? Enter this key manually: <span class="mono" id="mfa-secret"></span></p>
+    </div>
+    <p class="note" id="mfa-challenge-note">Enter the current 6-digit code from your authenticator app.</p>
+    <form id="mfa-form">
+      <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required style="font-size:1.4rem;letter-spacing:.3em;text-align:center">
+      <button class="btn btn-dark" style="margin-top:12px;width:100%" type="submit">Verify</button>
+      <p class="note" id="mfa-error" style="color:var(--high)"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= not an admin ======================= -->
+<div id="view-denied" class="auth wrap hidden">
+  <div class="card">
+    <h2 style="font-size:1.5rem">Access denied</h2>
+    <p>This account is not a SCAMWISE administrator. Access is checked by the server on every request, not just hidden in this page.</p>
+    <button class="btn btn-dark" id="denied-logout">Sign out</button>
+  </div>
+</div>
+
+<!-- ======================= dashboard ======================= -->
+<div id="view-app" class="shell hidden">
+  <aside class="side">
+    <button data-tab="overview" class="on">📊 Overview</button>
+    <button data-tab="users">👥 Users &amp; plans</button>
+    <button data-tab="devices">📱 Devices</button>
+    <button data-tab="incidents">🚨 Incidents</button>
+    <button data-tab="audit">📜 Audit log</button>
+    <button data-tab="feedback">✉️ Feedback</button>
+  </aside>
+  <main class="main">
+    <div class="callout" style="margin-bottom:18px;font-size:.88rem">You see only incident <b>metadata</b> that users allowed to be shared: no message text, no OTPs, masked phone numbers. Every administrator action is written to the audit log.</div>
+    <div class="topbar">
+      <h2 id="tab-title">Overview</h2>
+      <span class="note" id="refreshed"></span>
+      <label class="note" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="live" checked style="width:auto"> Auto-refresh (15 s)</label>
+      <button class="btn btn-dark small" id="refresh">Refresh</button>
+    </div>
+
+    <section id="tab-overview" style="padding:0">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card"><h3>Risk distribution</h3><div class="bars" id="riskbars"></div></div>
+        <div class="card"><h3>Threat-intelligence lookups</h3><div class="bars" id="tibars"></div><p class="note">"not_configured" / "unavailable" mean the link reputation was not checked, never that it was safe.</p></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h3>Recent incidents</h3><div class="table-wrap"><table id="recent"></table></div></div>
+    </section>
+
+    <section id="tab-users" class="hidden" style="padding:0">
+      <div class="kpis" id="plan-kpis" style="margin-bottom:16px"></div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <input id="user-search" placeholder="Search email, name or phone" style="max-width:280px">
+        <select id="plan-filter" style="width:auto"><option value="">All plans</option><option value="trial">Free trial</option><option value="individual">Individual</option><option value="family">Family</option><option value="business">Business</option><option value="enterprise">Enterprise &amp; Banking</option></select>
+        <select id="state-filter" style="width:auto"><option value="">Any status</option><option value="active">Active (paid)</option><option value="trial">On trial</option><option value="expired">Expired</option><option value="expiring">Expiring in 7 days</option></select>
+        <button class="btn small" style="background:var(--line)" id="export-users">Export CSV</button>
+        <span class="note" id="user-count"></span>
+      </div>
+      <div class="card"><div class="table-wrap"><table id="users"></table></div>
+      <p class="note">Plans are assigned here by an administrator. Expired accounts cannot run checks until renewed. Trial: 7 days, 1 device, 2 checks/day, 14 checks total. Every change is written to the audit log.</p></div>
+    </section>
+
+    <section id="tab-devices" class="hidden" style="padding:0">
+      <div class="card"><div class="table-wrap"><table id="devices"></table></div>
+      <p class="note">"Online" = heartbeat within the last 2 minutes. A registered device is never assumed to be connected.</p></div>
+    </section>
+
+    <section id="tab-incidents" class="hidden" style="padding:0">
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center">
+        <span class="note">Filter</span>
+        <select id="risk-filter" style="width:auto"><option value="">All risk levels</option><option>high</option><option>medium</option><option>low</option><option>inconclusive</option></select>
+      </div>
+      <div class="card"><div class="table-wrap"><table id="incidents"></table></div></div>
+    </section>
+
+    <section id="tab-audit" class="hidden" style="padding:0">
+      <div class="card"><div class="table-wrap"><table id="audit"></table></div></div>
+    </section>
+
+    <section id="tab-feedback" class="hidden" style="padding:0">
+      <div class="card"><div class="table-wrap"><table id="feedback"></table></div></div>
+    </section>
+  </main>
+</div>
+<div id="drawer" class="drawer hidden"></div>
+
+<div id="view-loaderr" class="auth wrap hidden"><div class="card"><h2 style="font-size:1.4rem">Could not load the dashboard</h2>
+  <p>The sign-in library failed to load. Check your internet connection or content blocker, then reload.</p></div></div>
+<script>
+  // shown only if the module below never initialises (e.g. the CDN is blocked)
+  setTimeout(function () {
+    var ids = ['login', 'mfa', 'denied', 'app'];
+    var anyShown = ids.some(function (x) { return !document.getElementById('view-' + x).classList.contains('hidden'); });
+    if (!anyShown) document.getElementById('view-loaderr').classList.remove('hidden');
+  }, 6000);
+</script>
+<script type="module" src="admin.js"></script>
+</body>
+</html>
